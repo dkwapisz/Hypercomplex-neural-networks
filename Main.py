@@ -20,19 +20,22 @@ elif mode == "CPU":
     physical_devices = tf.config.list_physical_devices('GPU')
     print("Num GPUs Available: ", len(physical_devices))
 
-start_time = time.time()
+# Initialize MirroredStrategy for multi-GPU setup
+strategy = tf.distribute.MirroredStrategy()
+
+print(f"Number of devices: {strategy.num_replicas_in_sync}")
 
 # data:
 x_train = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.dtype(float))
 y_train = np.array([[0], [1], [1], [0]])
 
-strategy = tf.distribute.MirroredStrategy()
-
+# Open a strategy scope to run model creation and compilation
 with strategy.scope():
-    # Tworzenie i kompilacja modelu w obrębie strategii
     model = Sequential()
     model.add(HyperDense(2000))
     model.add(HyperDense(10000))
+    model.add(HyperDense(2000))
+    model.add(HyperDense(2000))
     model.add(HyperDense(2000))
     model.add(HyperDense(3000))
     model.add(HyperDense(4000))
@@ -41,9 +44,15 @@ with strategy.scope():
     model.add(Activation('sigmoid'))
 
     model.compile(loss='binary_crossentropy', optimizer=Adam(), metrics=['accuracy'])
+    model.build(input_shape=(None, 4))
 
+print("Starting training...")
+start_time = time.time()
+
+# Train the model
 model.fit(x_train, y_train, epochs=100, batch_size=1000, verbose=1)
 
+# Predict with the model
 y_predict = model.predict(x_train)
 y_predict_quantized = np.round(y_predict).astype(int)
 
