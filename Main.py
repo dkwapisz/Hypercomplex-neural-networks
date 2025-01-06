@@ -5,6 +5,7 @@ import tensorflow as tf
 from HypercomplexKeras.Hyperdense import HyperDense
 from keras import Sequential
 from keras.src.layers import Dense, Activation
+from keras.src.optimizers import Adam
 
 # This code is just for testing purposes
 
@@ -14,7 +15,6 @@ mode = "GPU"
 if mode == "GPU":
     physical_devices = tf.config.list_physical_devices('GPU')
     print("Num GPUs Available: ", len(physical_devices))
-    tf.config.experimental.set_memory_growth(physical_devices[0], True)
 elif mode == "CPU":
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
     physical_devices = tf.config.list_physical_devices('GPU')
@@ -26,23 +26,21 @@ start_time = time.time()
 x_train = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.dtype(float))
 y_train = np.array([[0], [1], [1], [0]])
 
-# create model:
-model = Sequential()
-model.add(HyperDense(2000))
-model.add(HyperDense(10000))
-model.add(HyperDense(2000))
-model.add(HyperDense(3000))
-model.add(HyperDense(4000))
-# model.add(Dense(num_neurons))
-model.add(Activation('tanh'))
-model.add(Dense(1))
-model.add(Activation('sigmoid'))
-model.predict(x_train, verbose=0)
+strategy = tf.distribute.MirroredStrategy()
 
-model.summary()
+with strategy.scope():
+    # Tworzenie i kompilacja modelu w obrębie strategii
+    model = Sequential()
+    model.add(HyperDense(2000))
+    model.add(HyperDense(10000))
+    model.add(HyperDense(2000))
+    model.add(HyperDense(3000))
+    model.add(HyperDense(4000))
+    model.add(Activation('tanh'))
+    model.add(Dense(1))
+    model.add(Activation('sigmoid'))
 
-sgd = tf.keras.optimizers.Adam()
-model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
+    model.compile(loss='binary_crossentropy', optimizer=Adam(), metrics=['accuracy'])
 
 model.fit(x_train, y_train, epochs=100, batch_size=1000, verbose=1)
 
