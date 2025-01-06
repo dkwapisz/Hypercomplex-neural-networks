@@ -26,8 +26,12 @@ strategy = tf.distribute.MirroredStrategy()
 print(f"Number of devices: {strategy.num_replicas_in_sync}")
 
 # data:
-x_train = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.dtype(float))
-y_train = np.array([[0], [1], [1], [0]])
+def generate_dummy_data(num_samples):
+    x_train = np.random.rand(num_samples, 4)
+    y_train = np.array([[1] if x[0] > 0.5 > x[1] else [0] for x in x_train])
+    return x_train, y_train
+
+x_train, y_train = generate_dummy_data(100000)
 
 # Open a strategy scope to run model creation and compilation
 with strategy.scope():
@@ -50,7 +54,7 @@ print("Starting training...")
 start_time = time.time()
 
 # Train the model
-model.fit(x_train, y_train, epochs=100, batch_size=1000, verbose=1)
+model.fit(x_train, y_train, epochs=10, batch_size=256, verbose=1)
 
 # Predict with the model
 y_predict = model.predict(x_train)
