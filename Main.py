@@ -12,9 +12,19 @@ from keras.src.optimizers import Adam
 # check if GPU is available:
 mode = "GPU"
 
+num_threads = os.cpu_count()
+
+print(f"Number of threads: {num_threads}")
+
+tf.config.threading.set_intra_op_parallelism_threads(num_threads)
+tf.config.threading.set_inter_op_parallelism_threads(num_threads)
+os.environ["OMP_NUM_THREADS"] = str(num_threads)
+
 if mode == "GPU":
     physical_devices = tf.config.list_physical_devices('GPU')
     print("Num GPUs Available: ", len(physical_devices))
+    for device in physical_devices:
+        tf.config.experimental.set_memory_growth(device, True)
 elif mode == "CPU":
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
     physical_devices = tf.config.list_physical_devices('GPU')
@@ -54,7 +64,7 @@ print("Starting training...")
 start_time = time.time()
 
 # Train the model
-model.fit(x_train, y_train, epochs=10, batch_size=256, verbose=1)
+model.fit(x_train, y_train, epochs=5, batch_size=256, verbose=1)
 
 # Predict with the model
 y_predict = model.predict(x_train)
