@@ -1,10 +1,11 @@
 import os
 import time
+
 import numpy as np
 import tensorflow as tf
 from HypercomplexKeras.Hyperdense import HyperDense
 from keras import Sequential
-from keras.src.layers import Dense, Activation
+from keras.src.layers import Dense, Activation, Conv2D, MaxPooling2D, Flatten
 from keras.src.optimizers import Adam
 
 # This code is just for testing purposes
@@ -35,36 +36,38 @@ strategy = tf.distribute.MirroredStrategy()
 
 print(f"Number of devices: {strategy.num_replicas_in_sync}")
 
-# data:
-def generate_dummy_data(num_samples):
-    x_train = np.random.rand(num_samples, 4)
-    y_train = np.array([[1] if x[0] > 0.5 > x[1] else [0] for x in x_train])
-    return x_train, y_train
 
-x_train, y_train = generate_dummy_data(100000)
+# data:
+num_samples = 100000
+img_height, img_width = 64, 64
+x_train = np.random.rand(num_samples, img_height, img_width, 3)
+y_train = np.random.randint(0, 2, num_samples)
 
 # Open a strategy scope to run model creation and compilation
 with strategy.scope():
     model = Sequential()
-    model.add(HyperDense(2000))
-    model.add(HyperDense(10000))
-    model.add(HyperDense(2000))
-    model.add(HyperDense(2000))
-    model.add(HyperDense(2000))
-    model.add(HyperDense(3000))
-    model.add(HyperDense(4000))
-    model.add(Activation('tanh'))
-    model.add(Dense(1))
-    model.add(Activation('sigmoid'))
+    model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(img_height, img_width, 3)))
+    model.add(MaxPooling2D((2, 2)))
+    model.add(Conv2D(64, (3, 3), activation='relu'))
+    model.add(MaxPooling2D((2, 2)))
+    model.add(Conv2D(128, (3, 3), activation='relu'))
+    model.add(MaxPooling2D((2, 2)))
+    model.add(Conv2D(256, (3, 3), activation='relu'))
+    model.add(MaxPooling2D((2, 2)))
+    model.add(Flatten())
+    model.add(Dense(128, activation='relu'))
+    model.add(Dense(1, activation='sigmoid'))
 
-    model.compile(loss='binary_crossentropy', optimizer=Adam(), metrics=['accuracy'])
-    model.build(input_shape=(None, 4))
+    model.compile(optimizer='adam',
+                  loss='binary_crossentropy',
+                  metrics=['accuracy'])
+    model.build()
 
 print("Starting training...")
 start_time = time.time()
 
 # Train the model
-model.fit(x_train, y_train, epochs=5, batch_size=256, verbose=1)
+model.fit(x_train, y_train, epochs=1000, batch_size=512, verbose=1)
 
 # Predict with the model
 y_predict = model.predict(x_train)
